@@ -108,7 +108,7 @@ case "$COMMAND" in
                         done
                         ;;
                 *)
-                        echo "Neznamy prepinac '$1'" >&2
+                        echo "Neznámý přepínač '$1'" >&2
         esac
     ;;
 
@@ -125,7 +125,6 @@ case "$COMMAND" in
         ;;
 
     show-default)
-        foundFile=0
         for file in "$BOOT_DIR"/*.conf; do
                 default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
                 if [ "$default" = "y" ]; then
@@ -141,6 +140,41 @@ case "$COMMAND" in
         done
         exit 1 # Pokud se nenajde zadny vychozi soubor
         ;;
+
+    make-default)
+        ENTRY_FILE_PATH="$1"
+        # Nalezeni predesleho vychoziho souboru
+        oldDefault=""
+        for file in "$BOOT_DIR"/*.conf; do
+                default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
+                if [ "$default" = "y" ]; then
+                        oldDefault="$file"
+                        break
+                fi
+        done
+        if [ "$oldDefault" = "$ENTRY_FILE_PATH" ]; then
+                echo "Zadaná položka už je výchozí"
+                exit 0
+        fi
+
+        if [ ! -f "$ENTRY_FILE_PATH" ]; then
+                echo "Zadaná cesta k souboru neexistuje" >&2
+                exit 1
+        fi
+
+        # Nastaveni predesleho vychoziho souboru na nevychozi
+        sed -i "s/vutfit_default y/vutfit_default n/" "$oldDefault"
+        # Nahrazeni řádku s "n" na řádek s "y"
+        if grep -q "^vutfit_default " "$ENTRY_FILE_PATH"; then
+                sed -i "s/vutfit_default n/vutfit_default y/" "$ENTRY_FILE_PATH"
+        # Pridani řádku s "y" pokud zadny vutfit_default řádek neexistuje
+        else
+                echo
+                echo "vutfit_default y" >> "$ENTRY_FILE_PATH"
+        fi
+        echo "Výchozí položka změněna na "$ENTRY_FILE_PATH""
+        ;;
+
     *)
         echo "Neznámý příkaz: $COMMAND" >&2
         exit 1
