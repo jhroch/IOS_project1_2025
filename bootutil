@@ -1,0 +1,212 @@
+#!/bin/bash
+
+# Vychozi adresar
+BOOT_DIR="/root/IOS_project1_2025/test"
+
+# -b presmerovani adresare
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -b)
+            BOOT_DIR="$2"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# kontrola jestli adresar existuje
+if [ ! -d "$BOOT_DIR" ]; then
+    echo "Chyba: Adresář $BOOT_DIR neexistuje!" >&2
+    exit 1
+fi
+
+# Ziskani prikazu
+COMMAND="$1"
+shift
+
+# Rozdeleni podle prikazu
+case "$COMMAND" in
+    list)
+        # Kontrola, jestli jsou v adresáři .conf soubory
+        conf_found=0
+        for file in "$BOOT_DIR"/*.conf; do
+                if [ -f "$file" ]; then
+                conf_found=1
+                break
+                fi
+        done
+
+        if [ $conf_found -eq 0 ]; then
+                echo "Chyba: Žádné .conf soubory v $BOOT_DIR!" >&2
+                exit 1
+        fi
+
+        # Výchozí chování bez přepínačů
+        if [ $# -eq 0 ]; then
+                for file in "$BOOT_DIR"/*.conf; do
+                title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
+                version=$(grep "^version " "$file" | tail -n1 | cut -d " " -f 2-)
+                linux=$(grep "^linux " "$file" | tail -n1 | cut -d " " -f 2-)
+                echo "$title ($version, $linux)"
+                done
+                exit 0
+        fi
+
+        # Přepínače
+        title_regex=""
+        kernel_regex=""
+        sort_by_file=0
+        sort_by_key=0
+
+        while [ $# -gt 0 ]; do
+                case "$1" in
+                -f)
+                        sort_by_file=1
+                        shift
+                        ;;
+                -s)
+                        sort_by_key=1
+                        shift
+                        ;;
+                -t)
+                        if [ -z "$2" ]; then
+                        echo "Chyba: -t vyžaduje regulární výraz!" >&2
+                        exit 1
+                        fi
+                        title_regex="$2"
+                        shift 2
+                        ;;
+                -k)
+                        if [ -z "$2" ]; then
+                        echo "Chyba: -k vyžaduje regulární výraz!" >&2
+                        exit 1
+                        fi
+                        kernel_regex="$2"
+                        shift 2
+                        ;;
+                *)
+                        echo "Neznámý přepínač '$1'" >&2
+                        shift
+                        ;;
+                esac
+        done
+
+        # Jeden cyklus pro všechny přepínače
+        if [ $sort_by_file -eq 1 ]; then
+                for file in $(ls -1 "$BOOT_DIR"/*.conf | sort); do
+                title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
+                version=$(grep "^version " "$file" | tail -n1 | cut -d " " -f 2-)
+                linux=$(grep "^linux " "$file" | tail -n1 | cut -d " " -f 2-)
+                if [ -n "$title_regex" ] && ! echo "$title" | grep -E "$title_regex" > /dev/null; then
+                        continue
+                fi
+                if [ -n "$kernel_regex" ] && ! echo "$linux" | grep -E "$kernel_regex" > /dev/null; then
+                        continue
+                fi
+                echo "$title ($version, $linux)"
+                done
+        elif [ $sort_by_key -eq 1 ]; then
+                # Řazení podle sort-key přímo v paměti
+                ( for file in "$BOOT_DIR"/*.conf; do
+                title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
+                version=$(grep "^version " "$file" | tail -n1 | cut -d " " -f 2-)
+                linux=$(grep "^linux " "$file" | tail -n1 | cut -d " " -f 2-)
+                sort_key=$(grep "^sort-key " "$file" | tail -n1 | cut -d " " -f 2-)
+                # Pokud sort_key neexistuje, vytvor hodne vysoky -> aby byl za kazdou cenu posledni (~)
+                if [ -z "$sort_key" ]; then
+                        sort_key="~$(basename "$file")"
+                else
+                        sort_key="$sort_key$(basename "$file")"
+                fi
+                if [ -n "$title_regex" ] && ! echo "$title" | grep -E "$title_regex" > /dev/null; then
+                        continue
+                fi
+                if [ -n "$kernel_regex" ] && ! echo "$linux" | grep -E "$kernel_regex" > /dev/null; then
+                        continue
+                fi
+                echo "$sort_key|$title ($version, $linux)"
+                done ) | sort | cut -d'|' -f2-
+        else
+                for file in "$BOOT_DIR"/*.conf; do
+                title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
+                version=$(grep "^version " "$file" | tail -n1 | cut -d " " -f 2-)
+                linux=$(grep "^linux " "$file" | tail -n1 | cut -d " " -f 2-)
+                if [ -n "$title_regex" ] && ! echo "$title" | grep -E "$title_regex" > /dev/null; then
+                        continue
+                fi
+                if [ -n "$kernel_regex" ] && ! echo "$linux" | grep -E "$kernel_regex" > /dev/null; then
+                        continue
+                fi
+                echo "$title ($version, $linux)"
+                done
+        fi
+    ;;
+
+    remove)
+        TITLE_REGEX="$1"
+        for file in "$BOOT_DIR"/*.conf; do
+            title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
+            if echo "$title" | grep -E "$TITLE_REGEX" > /dev/null; then
+                rm -f "$file"
+            fi
+        done
+        ;;
+
+    show-default)
+        for file in "$BOOT_DIR"/*.conf; do
+            default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
+            if [ "$default" = "y" ]; then
+                if [ "$1" != "-f" ]; then
+                    cat "$file"
+                    echo    # Vlozi \n 
+                    exit 0
+                else
+                    echo "$file"
+                    exit 0
+                fi
+            fi
+        done
+        exit 1 # Pokud se nenajde zadny vychozi soubor
+        ;;
+
+    make-default)
+        ENTRY_FILE_PATH="$1"
+        # Nalezeni predesleho vychoziho souboru
+        oldDefault=""
+        for file in "$BOOT_DIR"/*.conf; do
+            default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
+            if [ "$default" = "y" ]; then
+                oldDefault="$file"
+                break
+            fi
+        done
+        if [ "$oldDefault" = "$ENTRY_FILE_PATH" ]; then
+            echo "Zadaná položka už je výchozí"
+            exit 0
+        fi
+
+        if [ ! -f "$ENTRY_FILE_PATH" ]; then
+            echo "Zadaná cesta k souboru neexistuje" >&2
+            exit 1
+        fi
+
+        # Nastaveni predesleho vychoziho souboru na nevychozi
+        sed -i "s/vutfit_default y/vutfit_default n/" "$oldDefault"
+        # Nahrazeni řádku s "n" na řádek s "y"
+        if grep -q "^vutfit_default " "$ENTRY_FILE_PATH"; then
+            sed -i "s/vutfit_default n/vutfit_default y/" "$ENTRY_FILE_PATH"
+        # Pridani řádku s "y" pokud zadny vutfit_default řádek neexistuje
+        else
+            echo
+            echo "vutfit_default y" >> "$ENTRY_FILE_PATH"
+        fi
+        echo "Výchozí položka změněna na '$ENTRY_FILE_PATH'"
+        ;;
+
+    *)
+        echo "Neznámý příkaz: $COMMAND" >&2
+        exit 1
+        ;;
+esac
