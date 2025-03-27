@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Výchozí adresář
-BOOT_DIR="/root/IOS_project1_2025/test"
+BOOT_DIR="/home/xonen/IOS/IOS_project1_2025/test"
 
 # -b přesměrování adresáře
 while [ $# -gt 0 ]; do
@@ -162,24 +162,113 @@ case "$COMMAND" in
 
     duplicate)
         ENTRY_FILE_PATH="$1"
-        # Hledání výchozího souboru když není zadaná cesta
-        if [ ! -f "$ENTRY_FILE_PATH" ]; then
+        # Pokud není zadána cesta, hledáme výchozí položku
+        if [ -z "$ENTRY_FILE_PATH" ] || [ ! -f "$ENTRY_FILE_PATH" ]; then
                 for file in "$BOOT_DIR"/*.conf; do
-                        default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
-                        if [ "$default" = "y" ]; then
-                                ENTRY_FILE_PATH="$file"
-                                break
-                        fi
+                if [ -f "$file" ] && grep -q "^vutfit_default y" "$file"; then
+                        ENTRY_FILE_PATH="$file"
+                        break
+                fi
+                done
+                if [ -z "$ENTRY_FILE_PATH" ] || [ ! -f "$ENTRY_FILE_PATH" ]; then
+                        echo "Chyba: Není zadána cesta a žádná výchozí položka nenalezena!" >&2
+                        exit 1
+                fi
+        else
+                shift # Posun jestli je zadaná cesta
+        fi
+
+        # Výchozí hodnoty pro novou položku
+        kernel_path=$(grep "^linux " "$ENTRY_FILE_PATH" | tail -n1 | cut -d " " -f 2-)
+        initrd_path=$(grep "^initrd " "$ENTRY_FILE_PATH" | tail -n1 | cut -d " " -f 2-)
+        title=$(grep "^title " "$ENTRY_FILE_PATH" | tail -n1 | cut -d " " -f 2-)
+        version=$(grep "^version " "$ENTRY_FILE_PATH" | tail -n1 | cut -d " " -f 2-)
+        options=$(grep "^options " "$ENTRY_FILE_PATH" | tail -n1 | cut -d " " -f 2-)
+        sort_key=$(grep "^sort-key " "$ENTRY_FILE_PATH" | tail -n1 | cut -d " " -f 2-)
+        make_default=0
+        destination=""
+
+        # Zpracování přepínačů
+        while [ $# -gt 0 ]; do
+                case "$1" in
+                -k)
+                        kernel_path="$2"
+                        shift 2
+                        ;;
+                -i)
+                        initrd_path="$2"
+                        shift 2
+                        ;;
+                -t)
+                        title="$2"
+                        shift 2
+                        ;;
+                -a)
+                        # Přidání parametrů do options
+                        new_args="$2"
+                        echo "$options $new_args" | xargs -n1 | sort -u | xargs > /tmp/options_temp
+                        options=$(cat /tmp/options_temp)
+                        rm -f /tmp/options_temp
+                        shift 2
+                        ;;
+                -r)
+                        # Odstranění parametrů z options
+                        remove_args="$2"
+                        echo "$options" | xargs -n1 | grep -v -E "^($remove_args|${remove_args}=.*)$" | xargs > /tmp/options_temp
+                        options=$(cat /tmp/options_temp)
+                        rm -f /tmp/options_temp
+                        shift 2
+                        ;;
+                -d)
+                        destination="$2"
+                        shift 2
+                        ;;
+                --make-default)
+                        make_default=1
+                        shift
+                        ;;
+                *)
+                        echo "Neznámý přepínač: $1" >&2
+                        shift
+                        ;;
+                esac
+        done
+
+        # Generování názvu nového souboru, pokud není zadán -d
+        if [ -z "$destination" ]; then
+                base_name=$(basename "$ENTRY_FILE_PATH" .conf)
+                i=1
+                destination="$BOOT_DIR/${base_name}_copy$i.conf"
+                while [ -f "$destination" ]; do
+                i=$((i + 1))
+                destination="$BOOT_DIR/${base_name}_copy$i.conf"
                 done
         fi
-        if [ -z "$ENTRY_FILE_PATH" ]; then
-                echo "Nezadána cesta a ani neexistuje výchozí soubor" >&2
-                exit 1
+
+        # Vytvoření nového souboru
+        {
+                echo "title $title"
+                echo "version $version"
+                echo "linux $kernel_path"
+                echo "initrd $initrd_path"
+                echo "options $options"
+                [ -n "$sort_key" ] && echo "sort-key $sort_key"
+                echo "vutfit_default n"
+        } > "$destination"
+
+        # Nastavení jako výchozí, pokud je zadán --make-default
+        if [ "$make_default" -eq 1 ]; then
+                # Zrušení předchozí výchozí položky
+                for file in "$BOOT_DIR"/*.conf; do
+                if [ "$file" != "$destination" ] && grep -q "^vutfit_default y" "$file"; then
+                        sed -i "s/^vutfit_default y/vutfit_default n/" "$file"
+                fi
+                done
+                # Nastavení nové položky jako výchozí
+                sed -i "s/^vutfit_default n/vutfit_default y/" "$destination"
         fi
-        shift # Shift po určení cesty k souboru
 
-        
-
+        echo "Položka duplikována do: $destination"
         ;;
 
     show-default)
