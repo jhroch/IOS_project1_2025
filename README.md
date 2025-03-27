@@ -4,6 +4,9 @@
 
 Tento projekt je shellový nástroj `bootutil`, vytvořený jako součást úlohy IOS (Operační systémy) na FIT VUT v roce 2025. Autorem projektu je **Your Name**. Implementuje správu zaváděcích položek podle zjednodušené verze **Boot Loader Specification**.
 
+## Upozornění
+Spuštění jako root může ovlivnit systémový adresář `/boot/loader/entries`. Doporučuje se testovat v bezpečném prostředí (např. vlastní testovací adresář) buď pomocí `./bootutil -b <testovací adresář>` nebo úprava `BOOT_DIR` na začátku `bootutil`.
+
 ## Zadání
 Projekt vznikl v rámci předmětu IOS 2025 na FIT VUT. Cílem bylo vytvořit nástroj pro správu zaváděcích položek v `.conf` souborech, včetně příkazů pro výpis, odstranění, duplikaci a nastavení výchozích položek. Kompletní zadání je k dispozici na ([ZDE](https://jhroch.github.io/IOS_project1_2025/)).
 
@@ -88,7 +91,6 @@ Podporuje přepínač `-b <boot_entries_dir>` pro změnu výchozího adresáře 
 Projekt je šířen pod [GNU General Public License v3.0](LICENSE). Více informací naleznete v souboru [LICENSE](LICENSE).
 
 ## Poznámky
-- **Upozornění:** Spuštění jako root může ovlivnit systémový adresář `/boot/loader/entries`. Doporučuje se testovat v bezpečném prostředí (např. vlastní testovací adresář).
 - Inspirace: Boot Loader Specification (zjednodušená verze pro účely úlohy IOS 2025).
 
 ---
