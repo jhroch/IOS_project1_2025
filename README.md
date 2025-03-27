@@ -1,96 +1,93 @@
-# Bootutil – Správa zaváděcích položek v shellu
+---
+# Bootutil – Boot Entry Management in Shell
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Tento projekt je shellový nástroj `bootutil`, vytvořený jako součást úlohy IOS (Operační systémy) na FIT VUT v roce 2025. Autorem projektu je **Your Name**. Implementuje správu zaváděcích položek podle zjednodušené verze **Boot Loader Specification**.
+This project is a shell tool `bootutil`, developed as part of the IOS (Operating Systems) course assignment at FIT VUT in 2025. The author of the project is **Jiří Hroch**. It implements management of boot entries according to a simplified version of the **Boot Loader Specification**.
 
-## Upozornění
-Spuštění jako root může ovlivnit systémový adresář `/boot/loader/entries`. Doporučuje se testovat v bezpečném prostředí (např. vlastní testovací adresář) buď pomocí `./bootutil -b <testovací adresář>` nebo úprava `BOOT_DIR` na začátku `bootutil`.
+## Warning
+Running as root may affect the system directory `/boot/loader/entries`. It is recommended to test in a safe environment (e.g., a custom test directory) using `./bootutil -b <test_directory>` or by modifying `BOOT_DIR` at the beginning of `bootutil`.
 
-## Zadání
-Projekt vznikl v rámci předmětu IOS 2025 na FIT VUT. Cílem bylo vytvořit nástroj pro správu zaváděcích položek v `.conf` souborech, včetně příkazů pro výpis, odstranění, duplikaci a nastavení výchozích položek. Kompletní zadání je k dispozici na ([ZDE](https://jhroch.github.io/IOS_project1_2025/)).
+## Assignment
+The project was created as part of the IOS 2025 course at FIT VUT. The goal was to develop a tool for managing boot entries in `.conf` files, including commands for listing, removing, duplicating, and setting default boot entries. The full assignment is available at ([HERE](https://jhroch.github.io/IOS_project1_2025/)).
 
-## Podrobnosti příkazů
-- **`list`:** Vypíše položky ve formátu `<title> (<version>, <linux>)`.
-  - `-f`: Seřadí podle názvů souborů.
-  - `-s`: Seřadí podle `sort-key` (bez klíče podle názvu souboru).
-  - `-k <kernel_regex>`: Filtruje podle `linux`.
-  - `-t <title_regex>`: Filtruje podle `title`.
-- **`remove <title-regex>`:** Odstraní položky podle regulárního výrazu na `title`.
-- **`duplicate [<entry_file_path>]`:** Duplikuje položku (výchozí, pokud není zadána).
-  - `-k <kernel_path>`: Nastaví cestu k jádru.
-  - `-i <initramfs_path>`: Nastaví cestu k initramfs.
-  - `-t <new_title>`: Změní název.
-  - `-a <cmdline_args>`: Přidá argumenty do `options`.
-  - `-r <cmdline_args>`: Odebere argumenty z `options`.
-  - `-d <destination>`: Určí cílový soubor.
-  - `--make-default`: Nastaví jako výchozí.
-- **`show-default`:** Zobrazí výchozí položku (nenulový kód, pokud není).
-  - `-f`: Zobrazí jen cestu.
-- **`make-default <entry_file_path>`:** Nastaví položku jako výchozí.
+## Command Details
+- **`list`:** Displays entries in the format `<title> (<version>, <linux>)`.
+  - `-f`: Sorts by file names.
+  - `-s`: Sorts by `sort-key` (by file name if no key is present).
+  - `-k <kernel_regex>`: Filters by `linux`.
+  - `-t <title_regex>`: Filters by `title`.
+- **`remove <title-regex>`:** Removes entries based on a regular expression matching `title`.
+- **`duplicate [<entry_file_path>]`:** Duplicates an entry (defaults to the default entry if not specified).
+  - `-k <kernel_path>`: Sets the kernel path.
+  - `-i <initramfs_path>`: Sets the initramfs path.
+  - `-t <new_title>`: Changes the title.
+  - `-a <cmdline_args>`: Adds arguments to `options`.
+  - `-r <cmdline_args>`: Removes arguments from `options`.
+  - `-d <destination>`: Specifies the destination file.
+  - `--make-default`: Sets as default.
+- **`show-default`:** Displays the default entry (non-zero exit code if none exists).
+  - `-f`: Shows only the file path.
+- **`make-default <entry_file_path>`:** Sets the specified entry as default.
 
-Podporuje přepínač `-b <boot_entries_dir>` pro změnu výchozího adresáře (`/boot/loader/entries`).
+Supports the `-b <boot_entries_dir>` switch to change the default directory (`/boot/loader/entries`).
 
-## Požadavky
-- Bash (direktiva `#!/bin/bash`).
-- Standardní UNIX nástroje: `grep`, `sed`, `sort`, `cut`, `xargs`.
-- Testováno na Linuxu (referenční VM IOS, user: `ios`, heslo: `ios-shell`).
+## Requirements
+- Bash (with the `#!/bin/bash` directive).
+- Standard UNIX tools: `grep`, `sed`, `sort`, `cut`, `xargs`.
+- Tested on Linux (reference IOS VM, user: `ios`, password: `ios-shell`).
 
-## Instalace
-1. Naklonuj repozitář:
+## Installation
+1. Clone the repository:
    ```bash
-   git clone https://github.com/tvoje-uzivatelske-jmeno/bootutil.git
-   cd bootutil
+   git clone https://github.com/jhroch/IOS_project1_2025.git
+   cd IOS_project1_2025
    ```
-2. Ujisti se, že má skript spustitelná práva:
+2. Ensure the script has executable permissions:
    ```bash
    chmod +x bootutil
    ```
 
-## Použití
+## Usage
 ```bash
-./bootutil [-b <boot_entries_dir>] <příkaz> [argumenty]
+./bootutil [-b <boot_entries_dir>] <command> [arguments]
 ```
 
-### Příklady
-- Výpis všech položek:
+### Examples
+- List all entries:
   ```bash
   ./bootutil list
   ```
-- Seřazení podle `sort-key`:
+- Sort by `sort-key`:
   ```bash
   ./bootutil list -s
   ```
-- Odstranění položek s "Fedora" v názvu:
+- Remove entries with "Fedora" in the title:
   ```bash
   ./bootutil remove "Fedora"
   ```
-- Duplikace výchozí položky s novým titulkem:
+- Duplicate the default entry with a new title:
   ```bash
   ./bootutil duplicate -t "New Fedora"
   ```
-- Zobrazení výchozí položky:
+- Display the default entry:
   ```bash
   ./bootutil show-default
   ```
 
-## Implementační detaily
-- Skript je napsán v Bash a využívá GNU nástroje (`sed`, `awk` povoleny).
-- Manipulace s příkazovým řádkem jádra (`options`) je řešena pomocí `xargs` pro správné parsování.
-- Řazení je implementováno příkazem `sort`, filtry používají `grep -E` pro rozšířené regulární výrazy.
-- Nejsou vytvářeny dočasné soubory mimo `<boot_entries_dir>`.
+## Implementation Details
+- Written in Bash using GNU tools (`sed`, `awk` permitted).
+- Kernel command line (`options`) manipulation is handled with `xargs` for proper parsing.
+- Sorting is implemented with the `sort` command; filters use `grep -E` for extended regular expressions.
+- No temporary files are created outside of `<boot_entries_dir>`.
 
-## Stav projektu
-- Hotové: `list`, `remove`, `show-default`, `make-default`.
-- Rozpracované: `duplicate` (parsování přepínačů a manipulace s `options` v procesu).
+## Author
+- **Jiří Hroch** – FIT VUT student, author of the IOS 2025 project.
 
-## Autor
-- **Jiří Hroch** – student FIT VUT, autor projektu v rámci předmětu IOS 2025.
+## License
+This project is distributed under the [GNU General Public License v3.0](LICENSE). See [LICENSE](LICENSE) for more details.
 
-## Licence
-Projekt je šířen pod [GNU General Public License v3.0](LICENSE). Více informací naleznete v souboru [LICENSE](LICENSE).
-
-## Poznámky
-- Inspirace: Boot Loader Specification (zjednodušená verze pro účely úlohy IOS 2025).
-
+## Notes
+- Inspiration: Boot Loader Specification (simplified version for the IOS 2025 assignment).
+  
 ---
