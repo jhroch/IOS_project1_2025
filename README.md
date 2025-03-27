@@ -5,7 +5,7 @@
 Tento projekt je shellový nástroj `bootutil`, vytvořený jako součást úlohy IOS (Operační systémy) na FIT VUT v roce 2025. Autorem projektu je **Your Name**. Implementuje správu zaváděcích položek podle zjednodušené verze **Boot Loader Specification**.
 
 ## Zadání
-Projekt vznikl v rámci předmětu IOS 2025 na FIT VUT. Cílem bylo vytvořit nástroj pro správu zaváděcích položek v `.conf` souborech, včetně příkazů pro výpis, odstranění, duplikaci a nastavení výchozích položek. Kompletní zadání je k dispozici v [assignment.html](assignment.html).
+Projekt vznikl v rámci předmětu IOS 2025 na FIT VUT. Cílem bylo vytvořit nástroj pro správu zaváděcích položek v `.conf` souborech, včetně příkazů pro výpis, odstranění, duplikaci a nastavení výchozích položek. Kompletní zadání je k dispozici na ([ZDE](https://jhroch.github.io/IOS_project1_2025/)).
 
 ## Podrobnosti příkazů
 - **`list`:** Vypíše položky ve formátu `<title> (<version>, <linux>)`.
