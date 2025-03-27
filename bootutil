@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Vychozi adresar
+# Výchozí adresář
 BOOT_DIR="/root/IOS_project1_2025/test"
 
-# -b presmerovani adresare
+# -b přesměrování adresáře
 while [ $# -gt 0 ]; do
     case "$1" in
         -b)
@@ -16,17 +16,17 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# kontrola jestli adresar existuje
+# Kontrola jestli adresář existuje
 if [ ! -d "$BOOT_DIR" ]; then
     echo "Chyba: Adresář $BOOT_DIR neexistuje!" >&2
     exit 1
 fi
 
-# Ziskani prikazu
+# Získání příkazu
 COMMAND="$1"
 shift
 
-# Rozdeleni podle prikazu
+# Rozdělení podle příkazu
 case "$COMMAND" in
     list)
         # Kontrola, jestli jsou v adresáři .conf soubory
@@ -94,40 +94,46 @@ case "$COMMAND" in
         done
 
         # Jeden cyklus pro všechny přepínače
+        # # Řazení podle file
         if [ $sort_by_file -eq 1 ]; then
                 for file in $(ls -1 "$BOOT_DIR"/*.conf | sort); do
                 title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
                 version=$(grep "^version " "$file" | tail -n1 | cut -d " " -f 2-)
                 linux=$(grep "^linux " "$file" | tail -n1 | cut -d " " -f 2-)
+                # Jestli se neshoduje title_regex
                 if [ -n "$title_regex" ] && ! echo "$title" | grep -E "$title_regex" > /dev/null; then
                         continue
                 fi
+                # Jestli se neshoduje kernel_regex
                 if [ -n "$kernel_regex" ] && ! echo "$linux" | grep -E "$kernel_regex" > /dev/null; then
                         continue
                 fi
                 echo "$title ($version, $linux)"
                 done
+        # Řazení podle sort-key
         elif [ $sort_by_key -eq 1 ]; then
-                # Řazení podle sort-key přímo v paměti
                 ( for file in "$BOOT_DIR"/*.conf; do
                 title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
                 version=$(grep "^version " "$file" | tail -n1 | cut -d " " -f 2-)
                 linux=$(grep "^linux " "$file" | tail -n1 | cut -d " " -f 2-)
                 sort_key=$(grep "^sort-key " "$file" | tail -n1 | cut -d " " -f 2-)
-                # Pokud sort_key neexistuje, vytvor hodne vysoky -> aby byl za kazdou cenu posledni (~)
+                # Pokud sort_key neexistuje, vytvoř hodně vysoký klíč (~) (řazení jako poslední)
                 if [ -z "$sort_key" ]; then
                         sort_key="~$(basename "$file")"
                 else
                         sort_key="$sort_key$(basename "$file")"
                 fi
+                # Jestli se neshoduje title_regex
                 if [ -n "$title_regex" ] && ! echo "$title" | grep -E "$title_regex" > /dev/null; then
                         continue
                 fi
+                # Jestli se neshoduje kernel_regex
                 if [ -n "$kernel_regex" ] && ! echo "$linux" | grep -E "$kernel_regex" > /dev/null; then
                         continue
                 fi
                 echo "$sort_key|$title ($version, $linux)"
-                done ) | sort | cut -d'|' -f2-
+                done ) | sort | cut -d'|' -f 2-
+        # Bez řazení
         else
                 for file in "$BOOT_DIR"/*.conf; do
                 title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
@@ -154,13 +160,34 @@ case "$COMMAND" in
         done
         ;;
 
+    duplicate)
+        ENTRY_FILE_PATH="$1"
+        # Hledání výchozího souboru když není zadaná cesta
+        if [ ! -f "$ENTRY_FILE_PATH" ]; then
+                for file in "$BOOT_DIR"/*.conf; do
+                        default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
+                        if [ "$default" = "y" ]; then
+                                ENTRY_FILE_PATH="$file"
+                                break
+                        fi
+                done
+        fi
+        if [ -z "$ENTRY_FILE_PATH" ]; then
+                echo "Nezadána cesta a ani neexistuje výchozí soubor" >&2
+                exit 1
+        fi
+        shift # Shift po určení cesty k souboru
+
+        
+
+        ;;
+
     show-default)
         for file in "$BOOT_DIR"/*.conf; do
             default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
             if [ "$default" = "y" ]; then
                 if [ "$1" != "-f" ]; then
                     cat "$file"
-                    echo    # Vlozi \n 
                     exit 0
                 else
                     echo "$file"
@@ -168,12 +195,12 @@ case "$COMMAND" in
                 fi
             fi
         done
-        exit 1 # Pokud se nenajde zadny vychozi soubor
+        exit 1 # Pokud se nenajde žádný výchozí soubor
         ;;
 
     make-default)
         ENTRY_FILE_PATH="$1"
-        # Nalezeni predesleho vychoziho souboru
+        # Nalezení předešlého výchozího souboru
         oldDefault=""
         for file in "$BOOT_DIR"/*.conf; do
             default=$(grep "^vutfit_default " "$file" | tail -n1 | cut -d " " -f 2-)
@@ -182,6 +209,7 @@ case "$COMMAND" in
                 break
             fi
         done
+
         if [ "$oldDefault" = "$ENTRY_FILE_PATH" ]; then
             echo "Zadaná položka už je výchozí"
             exit 0
@@ -192,14 +220,14 @@ case "$COMMAND" in
             exit 1
         fi
 
-        # Nastaveni predesleho vychoziho souboru na nevychozi
+        # Nastavení předešlého výchozího souboru na nevýchozí
         sed -i "s/vutfit_default y/vutfit_default n/" "$oldDefault"
-        # Nahrazeni řádku s "n" na řádek s "y"
+        # Nahrazení řádku s "n" na řádek s "y"
         if grep -q "^vutfit_default " "$ENTRY_FILE_PATH"; then
             sed -i "s/vutfit_default n/vutfit_default y/" "$ENTRY_FILE_PATH"
-        # Pridani řádku s "y" pokud zadny vutfit_default řádek neexistuje
+        # Přidání řádku s "y" pokud žádný vutfit_default řádek neexistuje
         else
-            echo
+            echo # \n pro jistotu, aby neskočil společně na předešlém řádku
             echo "vutfit_default y" >> "$ENTRY_FILE_PATH"
         fi
         echo "Výchozí položka změněna na '$ENTRY_FILE_PATH'"
