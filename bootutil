@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Výchozí adresář
-BOOT_DIR="/home/xonen/IOS/IOS_project1_2025/test"
+BOOT_DIR="/boot/loader/entries/"
 
 # -b přesměrování adresáře
 while [ $# -gt 0 ]; do
