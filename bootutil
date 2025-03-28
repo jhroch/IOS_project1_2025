@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Výchozí adresář
-BOOT_DIR="/boot/loader/entries/"
+BOOT_DIR="/home/xonen/IOS/IOS_project1_2025/test"
 
 # -b přesměrování adresáře
 while [ $# -gt 0 ]; do
@@ -206,17 +206,17 @@ case "$COMMAND" in
                 -a)
                         # Přidání parametrů do options
                         new_args="$2"
-                        echo "$options $new_args" | xargs -n1 | sort -u | xargs > /tmp/options_temp
-                        options=$(cat /tmp/options_temp)
-                        rm -f /tmp/options_temp
+                        echo "$options $new_args" | xargs -n1 | sort -u | xargs > "$BOOT_DIR"/temp
+                        options=$(cat "$BOOT_DIR"/temp)
+                        rm -f "$BOOT_DIR"/temp
                         shift 2
                         ;;
                 -r)
                         # Odstranění parametrů z options
                         remove_args="$2"
-                        echo "$options" | xargs -n1 | grep -v -E "^($remove_args|${remove_args}=.*)$" | xargs > /tmp/options_temp
-                        options=$(cat /tmp/options_temp)
-                        rm -f /tmp/options_temp
+                        echo "$options" | xargs -n1 | grep -v -E "^($remove_args|${remove_args}=.*)$" | xargs > "$BOOT_DIR"/temp
+                        options=$(cat "$BOOT_DIR"/temp)
+                        rm -f "$BOOT_DIR"/temp
                         shift 2
                         ;;
                 -d)
