@@ -1,7 +1,10 @@
 #!/bin/bash
+# IOS Project 1 2025
+# Author: Jiří Hroch
 
 # Výchozí adresář
-BOOT_DIR="/boot/loader/entries/"
+BOOT_DIR="/boot/loader/entries"
+shopt -s dotglob  # zapne zahrnování skrytých souborů
 
 # -b přesměrování adresáře
 while [ $# -gt 0 ]; do
@@ -96,7 +99,7 @@ case "$COMMAND" in
         # Jeden cyklus pro všechny přepínače
         # # Řazení podle file
         if [ $sort_by_file -eq 1 ]; then
-                for file in $(ls -1 "$BOOT_DIR"/*.conf | sort); do
+                ( for file in "$BOOT_DIR"/*.conf; do
                 title=$(grep "^title " "$file" | tail -n1 | cut -d " " -f 2-)
                 version=$(grep "^version " "$file" | tail -n1 | cut -d " " -f 2-)
                 linux=$(grep "^linux " "$file" | tail -n1 | cut -d " " -f 2-)
@@ -109,7 +112,7 @@ case "$COMMAND" in
                         continue
                 fi
                 echo "$title ($version, $linux)"
-                done
+                done ) | sort | cut -d'|' -f 2-
         # Řazení podle sort-key
         elif [ $sort_by_key -eq 1 ]; then
                 ( for file in "$BOOT_DIR"/*.conf; do
@@ -161,7 +164,8 @@ case "$COMMAND" in
         ;;
 
     duplicate)
-        ENTRY_FILE_PATH="$1"
+        args=("$@") # uložení parametrů do pole
+        ENTRY_FILE_PATH="${args[-1]}" # poslední parametr
         # Pokud není zadána cesta, hledáme výchozí položku
         if [ -z "$ENTRY_FILE_PATH" ] || [ ! -f "$ENTRY_FILE_PATH" ]; then
                 for file in "$BOOT_DIR"/*.conf; do
@@ -174,8 +178,6 @@ case "$COMMAND" in
                         echo "Chyba: Není zadána cesta a žádná výchozí položka nenalezena!" >&2
                         exit 1
                 fi
-        else
-                shift # Posun jestli je zadaná cesta
         fi
 
         # Výchozí hodnoty pro novou položku
@@ -189,7 +191,7 @@ case "$COMMAND" in
         destination=""
 
         # Zpracování přepínačů
-        while [ $# -gt 0 ]; do
+        while [ $# -gt 1 ]; do
                 case "$1" in
                 -k)
                         kernel_path="$2"
@@ -206,17 +208,17 @@ case "$COMMAND" in
                 -a)
                         # Přidání parametrů do options
                         new_args="$2"
-                        echo "$options $new_args" | xargs -n1 | sort -u | xargs > "$BOOT_DIR"temp
-                        options=$(cat "$BOOT_DIR"temp)
-                        rm -f "$BOOT_DIR"temp
+                        echo "$options $new_args" | xargs -n1 | sort -u | xargs > "$BOOT_DIR"/temp
+                        options=$(cat "$BOOT_DIR"/temp)
+                        rm -f "$BOOT_DIR"/temp
                         shift 2
                         ;;
                 -r)
                         # Odstranění parametrů z options
                         remove_args="$2"
-                        echo "$options" | xargs -n1 | grep -v -E "^($remove_args|${remove_args}=.*)$" | xargs > "$BOOT_DIR"temp
-                        options=$(cat "$BOOT_DIR"temp)
-                        rm -f "$BOOT_DIR"temp
+                        echo "$options" | xargs -n1 | grep -v -E "^($remove_args|${remove_args}=.*)$" | xargs > "$BOOT_DIR"/temp
+                        options=$(cat "$BOOT_DIR"/temp)
+                        rm -f "$BOOT_DIR"/temp
                         shift 2
                         ;;
                 -d)
@@ -310,16 +312,14 @@ case "$COMMAND" in
         fi
 
         # Nastavení předešlého výchozího souboru na nevýchozí
-        sed -i "s/vutfit_default y/vutfit_default n/" "$oldDefault"
+        sed -i "s/^vutfit_default y/vutfit_default n/" "$oldDefault"
         # Nahrazení řádku s "n" na řádek s "y"
         if grep -q "^vutfit_default " "$ENTRY_FILE_PATH"; then
             sed -i "s/vutfit_default n/vutfit_default y/" "$ENTRY_FILE_PATH"
         # Přidání řádku s "y" pokud žádný vutfit_default řádek neexistuje
         else
-            echo # \n pro jistotu, aby neskočil společně na předešlém řádku
             echo "vutfit_default y" >> "$ENTRY_FILE_PATH"
         fi
-        echo "Výchozí položka změněna na '$ENTRY_FILE_PATH'"
         ;;
 
     *)
